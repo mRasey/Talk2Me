@@ -18,21 +18,21 @@ import java.net.Socket;
 
 public class SocketOperation implements Runnable{
 
-    private StringBuilder dealResult;
+    private StringBuilder dealResult = new StringBuilder();
     private JSONObject inputJson;
     private JSONObject callBackJson;
     private Handler handler;
 //    private Socket socket = new Socket("192.168.31.132", 2333);
     private Message message = new Message();
-    private final int HIDE_PROGRESSBAR = 1;
-    private final int SHOW_PROGRESSBAR = 2;
-    private final int ERROR_CONNECT = 3;//无法连接服务器
-    private final int ERROR_PASSWORD = 4;//密码错误
-    private final int ERROR_ACCOUNT = 5;//用户名不存在
+//    private final int HIDE_PROGRESSBAR = 1;
+//    private final int SHOW_PROGRESSBAR = 2;
+//    private final int ERROR_CONNECT = 3;//无法连接服务器
+//    private final int ERROR_PASSWORD = 4;//密码错误
+//    private final int ERROR_ACCOUNT = 5;//用户名不存在
 
     public SocketOperation(JSONObject jsonObject, StringBuilder dealResult) throws IOException {
         this.inputJson = jsonObject;
-        this.dealResult = dealResult;
+//        this.dealResult = dealResult;
     }
 
     public SocketOperation(JSONObject jsonObject, JSONObject callBackJson) throws IOException {
@@ -46,7 +46,12 @@ public class SocketOperation implements Runnable{
 
     public SocketOperation(JSONObject jsonObject, StringBuilder dealResult, Handler handler) throws IOException {
         this.inputJson = jsonObject;
-        this.dealResult = dealResult;
+//        this.dealResult = dealResult;
+        this.handler = handler;
+    }
+
+    public SocketOperation(JSONObject jsonObject, Handler handler) {
+        this.inputJson = jsonObject;
         this.handler = handler;
     }
 
@@ -62,39 +67,61 @@ public class SocketOperation implements Runnable{
         this.callBackJson = callBackJson;
     }
 
-    public String sendMsg() throws IOException {
-        Socket socket = new Socket("192.168.31.132", 2333);
-        String ipAddress = socket.getInetAddress().toString();
+    public boolean sendMsg() throws IOException {
+        Socket socket = new Socket("192.168.31.171", 2333);
         BufferedWriter bfw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         BufferedReader bfr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         bfw.write(inputJson.toString() + "\n");
         bfw.flush();
         dealResult.append(bfr.readLine());
-        return dealResult.toString();
+        if(dealResult.toString().equals("login success")) {
+            handler.sendMessage(MyMessage.createMessage(MESSAGE.LOGIN_SUCCESS));
+            return true;
+        }
+        else if(dealResult.toString().equals("account not exist")) {
+            handler.sendMessage(MyMessage.createMessage(MESSAGE.ERROR_ACCOUNT));
+            return true;
+        }
+        else if(dealResult.toString().equals("error password")) {
+            handler.sendMessage(MyMessage.createMessage(MESSAGE.ERROR_PASSWORD));
+            return true;
+        }
+        else if(dealResult.toString().equals("register success")) {
+            handler.sendMessage(MyMessage.createMessage(MESSAGE.REGISTER_SUCCESS));
+            return true;
+        }
+        else if(dealResult.toString().equals("account already exist")) {
+            handler.sendMessage(MyMessage.createMessage(MESSAGE.ACCOUNT_ALREADY_EXIST));
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
+    //从服务器获取消息
     public JSONObject getMsg() throws IOException, JSONException {
-        Socket socket = new Socket("192.168.31.132", 2333);
-        String ipAddress = socket.getInetAddress().toString();
+        Socket socket = new Socket("192.168.31.171", 2333);
+//        String ipAddress = socket.getInetAddress().toString();
         BufferedWriter bfw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         BufferedReader bfr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        bfw.write(inputJson.toString() + '\n');
+        bfw.write(inputJson.toString() + "\n");
         bfw.flush();
-        callBackJson = new JSONObject(bfr.readLine());
-        return callBackJson;
+//        callBackJson = new JSONObject(bfr.readLine());
+        return new JSONObject(bfr.readLine());
     }
 
     @Override
     public void run() {
         try {
-            boolean canConnect = InetAddress.getByName("192.168.31.132").isReachable(5000);
+            boolean canConnect = InetAddress.getByName("192.168.31.171").isReachable(5000);
             if(canConnect) {
                 sendMsg();
             }
             else {
-                handler.removeMessages(SHOW_PROGRESSBAR);
+                handler.removeMessages(MESSAGE.SHOW_PROGRESSBAR);
                 if(dealResult.toString().equals("")) {
-                    message.what = ERROR_CONNECT;
+                    message.what = MESSAGE.ERROR_CONNECT;
                     handler.sendMessage(message);
                 }
             }

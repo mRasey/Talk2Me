@@ -23,15 +23,18 @@ import java.util.Map;
 import java.util.TimerTask;
 import java.util.logging.LogRecord;
 
-public class LoginActivity extends AppCompatActivity {
-    final int HIDE_PROGRESSBAR = 1;
-    final int SHOW_PROGRESSBAR = 2;
-    final int ERROR_CONNECT = 3;//无法连接服务器
-    final int ERROR_PASSWORD = 4;//密码错误
-    final int ERROR_ACCOUNT = 5;//用户名不存在
-    Message hideProgressBarMessage = new Message();
-    Message showProgressBarMessage = new Message();
+import static com.codemine.talk2me.MESSAGE.*;
 
+public class LoginActivity extends AppCompatActivity {
+//    final int HIDE_PROGRESSBAR = 1;
+//    final int SHOW_PROGRESSBAR = 2;
+//    final int ERROR_CONNECT = 3;//无法连接服务器
+//    final int ERROR_PASSWORD = 4;//密码错误
+//    final int ERROR_ACCOUNT = 5;//用户名不存在
+//    Message hideProgressBarMessage = new Message();
+//    Message showProgressBarMessage = new Message();
+
+    Intent intent;
     public static StringBuilder dealResult = new StringBuilder();
     LinearLayout progressLayout;
     LinearLayout logInLayout;
@@ -65,6 +68,35 @@ public class LoginActivity extends AppCompatActivity {
                     alert("与服务器断开连接，请重试");
                     handler.removeMessages(ERROR_CONNECT);
                     break;
+                case LOGIN_SUCCESS:
+                    handler.removeMessages(LOGIN_SUCCESS);
+                    intent = new Intent(LoginActivity.this, MainActivity.class);
+                    intent.putExtra("account", accountEdit.getText().toString());
+                    startActivity(intent);
+                    finish();
+                    break;
+                case ERROR_ACCOUNT:
+                    progressLayout.setVisibility(View.GONE);
+                    alert("账号不存在，请重试");
+                    handler.removeMessages(ERROR_ACCOUNT);
+                    break;
+                case ERROR_PASSWORD:
+                    progressLayout.setVisibility(View.GONE);
+                    alert("密码错误，请重试");
+                    handler.removeMessages(ERROR_PASSWORD);
+                    break;
+                case REGISTER_SUCCESS:
+                    alert("注册成功，请登录");
+                    handler.removeMessages(REGISTER_SUCCESS);
+//                    intent = new Intent(LoginActivity.this, LoginActivity.class);
+//                    startActivity(intent);
+//                    finish();
+                    break;
+                case ACCOUNT_ALREADY_EXIST:
+                    progressLayout.setVisibility(View.GONE);
+                    alert("账号已存在，请登录");
+                    handler.removeMessages(ACCOUNT_ALREADY_EXIST);
+                    break;
                 default:
                     break;
             }
@@ -81,8 +113,6 @@ public class LoginActivity extends AppCompatActivity {
 
 
         checkLogin();
-        hideProgressBarMessage.what = HIDE_PROGRESSBAR;
-        showProgressBarMessage.what = SHOW_PROGRESSBAR;
 
         logInLayout = (LinearLayout) findViewById(R.id.login_layout);
         registerLayout = (LinearLayout) findViewById(R.id.register_layout);
@@ -103,25 +133,10 @@ public class LoginActivity extends AppCompatActivity {
 
         final int passwordInputType = registerPasswordEdit.getInputType();
 
-        //登陆界面
-//        progressLayout.setVisibility(View.VISIBLE);
-//        loginButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                progressLayout.setVisibility(View.VISIBLE);
-//            }
-//        });
-
         loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Message message = new Message();
-                message.what = SHOW_PROGRESSBAR;
-                handler.sendMessage(message);
-//                loginButton.setBackgroundColor(Color.rgb(255, 140, 0));
-//                loggingButton.setVisibility(View.VISIBLE);
-//                logLayout.setVisibility(View.GONE);
-//                progressLayout.setVisibility(View.VISIBLE);//显示进度条
+                handler.sendMessage(MyMessage.createMessage(MESSAGE.SHOW_PROGRESSBAR));
                 final String account = accountEdit.getText().toString();
                 String password = passwordEdit.getText().toString();
                 dealResult.delete(0, dealResult.length());
@@ -259,7 +274,7 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
-                if(emailAddress.equals("")) {
+                if(emailAddress.equals("") || emailAddress.matches("@[0-9A-z]\\.[a-z]+$")) {
                     registerEmailEdit.setText("邮箱地址不能为空");
                     registerEmailEdit.setTextColor(Color.RED);
                     return;
@@ -279,14 +294,14 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
-                handler.sendMessage(MyMessage.createMessage(SHOW_PROGRESSBAR));
+                handler.sendMessage(MyMessage.createMessage(MESSAGE.SHOW_PROGRESSBAR));
 
                 dealResult = dealResult.delete(0, dealResult.length());
                 Map<String, String> map = new HashMap<>();
                 map.put("op", "register");
                 map.put("account", account);
                 map.put("password", password);
-                map.put("emailAddress", emailAddress);
+                map.put("email", emailAddress);
                 JSONObject jsonObject = new JSONObject(map);
                 try {
                     new Thread(new SocketOperation(jsonObject, dealResult, handler)).start();
@@ -386,8 +401,12 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
+                registerLayout.setVisibility(View.GONE);
+                logInLayout.setVisibility(View.VISIBLE);
+                handler.sendMessage(MyMessage.createMessage(HIDE_PROGRESSBAR));
             }
         });
+
         builder.create().show();
     }
 }

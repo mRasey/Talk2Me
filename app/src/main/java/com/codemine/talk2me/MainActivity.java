@@ -22,6 +22,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.RunnableFuture;
+
+import static com.codemine.talk2me.MESSAGE.*;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -31,21 +34,38 @@ public class MainActivity extends AppCompatActivity {
     MySQLiteOpenHelper mySQLiteOpenHelper;
     SQLiteDatabase sqLiteDatabase;
     JSONObject contractJsonInfo;
-    JSONObject callBackJson;
+    JSONObject callBackJson = new JSONObject();
+    String myAccount;
 
     Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case NEW_MSG:
+                    handler.removeMessages(NEW_MSG);
                     try {
-                        updateContacts(callBackJson.getString("name"), callBackJson.getString("msg"));//更新联系人列表
+                        updateContactsFromServer(callBackJson.getString("name"), callBackJson.getString("msg"));//更新联系人列表
                         ContactsAdapter contactsAdapter = new ContactsAdapter(MainActivity.this, R.layout.contact_item, contacts);
                         contractsList.setAdapter(contactsAdapter);
                         break;
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
+                    break;
+                case GET_FRIENDS_FROM_SERVER:
+                    handler.removeMessages(GET_FRIENDS_FROM_SERVER);
+                    try {
+                        for (int i = 0; i < 1024; i++) {
+                            if(callBackJson.has(i + ""))
+                                contacts.add(new Contact(callBackJson.getString(i + ""), "", "", R.drawable.head));
+                        }
+                        ContactsAdapter contactsAdapter = new ContactsAdapter(MainActivity.this, R.layout.contact_item, contacts);
+                        contractsList.setAdapter(contactsAdapter);
+                    }
+                    catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    break;
                 default:
                     break;
             }
@@ -59,13 +79,16 @@ public class MainActivity extends AppCompatActivity {
             getSupportActionBar().hide();
         setContentView(R.layout.activity_main);
 
-        mySQLiteOpenHelper = new MySQLiteOpenHelper(this, "data.db", null, 1);//创建数据库
-        sqLiteDatabase = mySQLiteOpenHelper.getWritableDatabase();
+        myAccount = getIntent().getStringExtra("account");//获取本机用户名
+
+//        mySQLiteOpenHelper = new MySQLiteOpenHelper(this, "data.db", null, 1);//创建数据库
+//        sqLiteDatabase = mySQLiteOpenHelper.getWritableDatabase();
         contractsList = (ListView) findViewById(R.id.contactsList);
 
-        initContacts(); // 初始化联系人列表
-        final ContactsAdapter contactsAdapter = new ContactsAdapter(MainActivity.this, R.layout.contact_item, contacts);
-        contractsList.setAdapter(contactsAdapter);
+        initContactsFromServer(); // 从服务器初始化联系人列表
+
+//        final ContactsAdapter contactsAdapter = new ContactsAdapter(MainActivity.this, R.layout.contact_item, contacts);
+//        contractsList.setAdapter(contactsAdapter);
 
         contractsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -79,61 +102,76 @@ public class MainActivity extends AppCompatActivity {
         });
 
         //新建线程循环接收服务器的消息
-        new Thread(new Runnable() {
-
-            Message message = new Message();
-
-            @Override
-            public void run() {
-                try {
-                    while(true) {
-                        //向服务器取信息
-                        HashMap<String, String> pushIpMap = new HashMap<>();
-                        pushIpMap.put("op", "UPDATE_IP");//定义操作
-                        pushIpMap.put("currentTime", getCurrentTime());
-                        pushIpMap.put("ipAddress", new Socket().getInetAddress().toString());
-                        callBackJson = new SocketOperation(new JSONObject(pushIpMap)).getMsg();//向服务器更新本机地址
-//                        ServerSocket serverSocket = new ServerSocket(2333);
-//                        Socket socket = serverSocket.accept();
-//                        BufferedReader bfr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//                        BufferedWriter bfw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-//                        contractJsonInfo = new JSONObject(bfr.readLine());
-                        switch ((String) callBackJson.get("op")) {
-                            case "NEW_MSG":
-                                message.what = NEW_MSG;
-                                break;
-                            default:
-                                break;
-                        }
-                        handler.sendMessage(message);
-                    }
-                } catch (IOException | JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-
-        }).start();
+//        new Thread(new Runnable() {
+//
+//            Message message = new Message();
+//
+//            @Override
+//            public void run() {
+//                try {
+//                    while(true) {
+//                        //向服务器取信息
+//                        HashMap<String, String> pushIpMap = new HashMap<>();
+//                        pushIpMap.put("op", "UPDATE_IP");//定义操作
+//                        pushIpMap.put("currentTime", getCurrentTime());
+//                        pushIpMap.put("ipAddress", new Socket().getLocalAddress().toString());
+//                        callBackJson = new SocketOperation(new JSONObject(pushIpMap)).getMsg();//向服务器更新本机地址
+////                        ServerSocket serverSocket = new ServerSocket(2333);
+////                        Socket socket = serverSocket.accept();
+////                        BufferedReader bfr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+////                        BufferedWriter bfw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+////                        contractJsonInfo = new JSONObject(bfr.readLine());
+//                        switch ((String) callBackJson.get("op")) {
+//                            case "NEW_MSG":
+//                                message.what = NEW_MSG;
+//                                break;
+//                            default:
+//                                break;
+//                        }
+//                        handler.sendMessage(message);
+//                    }
+//                } catch (IOException | JSONException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//
+//        }).start();
     }
 
     /**
      * 从数据库读取联系人列表
      */
-    public void initContacts() {
+    public void initContactsFromServer() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("op", "getFriends");
+                    jsonObject.put("account", myAccount);
+                    callBackJson = new SocketOperation(jsonObject).getMsg();
+                    handler.sendMessage(MyMessage.createMessage(GET_FRIENDS_FROM_SERVER));
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
 //        contacts.add(new Contact("billy", "hahaha", "now", R.drawable.head));
 //        contacts.add(new Contact("wang", "2333", "now", R.drawable.head));
-        Cursor cursor = sqLiteDatabase.query("CONTRACTS", null, null, null, null, null, null);
-        while(cursor.moveToNext()) {
-            String name = cursor.getString(cursor.getColumnIndex("name"));
-            String time = cursor.getString(cursor.getColumnIndex("time"));
-            String msg = cursor.getString(cursor.getColumnIndex("msg"));
-            contacts.add(new Contact(name, msg, time, R.drawable.head));
-        }
+//        Cursor cursor = sqLiteDatabase.query("CONTRACTS", null, null, null, null, null, null);
+//        while(cursor.moveToNext()) {
+//            String name = cursor.getString(cursor.getColumnIndex("name"));
+//            String time = cursor.getString(cursor.getColumnIndex("time"));
+//            String msg = cursor.getString(cursor.getColumnIndex("msg"));
+//            contacts.add(new Contact(name, msg, time, R.drawable.head));
+//        }
     }
 
     /**
      * 更新联系人列表
      */
-    public void updateContacts(String name, String msg) {
+    public void updateContactsFromServer(String name, String msg) {
         ContentValues values = new ContentValues();
         values.put("time", getCurrentTime());
         values.put("msg", msg);
