@@ -1,5 +1,7 @@
 package com.codemine.talk2me;
 
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.provider.CalendarContract;
 import android.support.v7.app.AppCompatActivity;
@@ -13,6 +15,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
 public class ChatActivity extends AppCompatActivity {
@@ -23,6 +27,11 @@ public class ChatActivity extends AppCompatActivity {
     Button sendMsgButton;
     TextView backText;
     TextView chattingWith;
+    String myAccount;
+    String oppositeAccount;
+    JSONObject callbackJson = new JSONObject();
+    MySQLiteOpenHelper mySQLiteOpenHelper;
+    SQLiteDatabase sqLiteDatabase;
 
 
     @Override
@@ -32,7 +41,8 @@ public class ChatActivity extends AppCompatActivity {
             getSupportActionBar().hide();
         setContentView(R.layout.activity_chat);
 
-        initChattingInfo();
+        mySQLiteOpenHelper = new MySQLiteOpenHelper(this, "data.db", null, 1);//创建数据库
+        sqLiteDatabase = mySQLiteOpenHelper.getWritableDatabase();
 
         chatList = (ListView) findViewById(R.id.chattingListView);
         inputMsgText = (EditText) findViewById(R.id.inputMsgText);
@@ -40,7 +50,12 @@ public class ChatActivity extends AppCompatActivity {
         backText = (TextView) findViewById(R.id.back_text);
         chattingWith = (TextView) findViewById(R.id.chattingWith);
 
-        chattingWith.setText(getIntent().getStringExtra("contactName"));
+
+
+        myAccount = getIntent().getStringExtra("myAccount");
+        oppositeAccount = getIntent().getStringExtra("oppositeAccount");
+        chattingWith.setText(oppositeAccount);
+        initChattingInfo();
 
         backText.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,12 +101,58 @@ public class ChatActivity extends AppCompatActivity {
                 inputMsgText.getText().clear();
             }
         });
+
+        //新开线程循环接收消息
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                try {
+//                    JSONObject jsonObject = new JSONObject();
+//                    jsonObject.put("op", "getNewChattingMsg");
+//                    jsonObject.put("myAccount", myAccount);
+//                    jsonObject.put("oppositeAccount", oppositeAccount);
+//                    callbackJson = new SocketOperation(jsonObject).getMsg();
+//                }
+//                catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }).start();
+    }
+
+    public Cursor getInfo() {
+        String sql = "SELECT * FROM CHAT_RECORD WHERE (fromAccount = ? AND toAccount = ?) OR (fromAccount = ? AND toAccount = ?);";
+        return sqLiteDatabase.rawQuery(sql, new String[]{myAccount, oppositeAccount, oppositeAccount, myAccount});
     }
 
     public void initChattingInfo() {
-//        chattingInfos.add(new ChattingInfo(R.id.other_layout, R.id.own_layout, R.drawable.head,
-//                R.drawable.head, "hellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohello", "", MsgType.OTHER, "now"));
-//        chattingInfos.add(new ChattingInfo(R.id.other_layout, R.id.own_layout, R.drawable.head,
-//                R.drawable.head, "", "worldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworldworld", MsgType.OWN, "now"));
+        //todo 从数据库加载历史消息
+        chattingInfos.clear();
+//        String sql = "SELECT * FROM CHAT_RECORD WHERE fromAccount IN (?,?);";
+        Cursor cursor = getInfo();
+        while (cursor.moveToNext()) {
+            if (cursor.getString(cursor.getColumnIndex("fromAccount")).equals(myAccount)) {
+                chattingInfos.add(
+                        new ChattingInfo(
+                                R.drawable.head,
+                                cursor.getString(cursor.getColumnIndex("info")),
+                                MsgType.OWN,
+                                cursor.getString(cursor.getColumnIndex("date"))));
+            }
+            else {
+                chattingInfos.add(
+                        new ChattingInfo(
+                                R.drawable.head,
+                                cursor.getString(cursor.getColumnIndex("info")),
+                                MsgType.OTHER,
+                                cursor.getString(cursor.getColumnIndex("date"))));
+            }
+        }
+    }
+
+    //按下返回键结束当前活动
+    @Override
+    public void onBackPressed() {
+        finish();
     }
 }

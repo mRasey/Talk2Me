@@ -14,4 +14,6 @@ public class MESSAGE {
     final static int REGISTER_SUCCESS = 7;//注册成功
     final static int ACCOUNT_ALREADY_EXIST = 8;//用户名已存在
     final static int GET_FRIENDS_FROM_SERVER = 9;//从服务器获取好友
+    final static int GET_NEW_MSG = 10;//从服务器获取新的消息
+    final static int SHAKE_NEW_FRIEND = 11;//通过摇晃手机获得一个新的朋友
 }

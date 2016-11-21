@@ -22,6 +22,8 @@ public class SocketOperation implements Runnable{
     private JSONObject inputJson;
     private JSONObject callBackJson;
     private Handler handler;
+//    private String ip = "172.31.255.141";
+    private String ip = "192.168.31.171";
 //    private Socket socket = new Socket("192.168.31.132", 2333);
     private Message message = new Message();
 //    private final int HIDE_PROGRESSBAR = 1;
@@ -68,7 +70,7 @@ public class SocketOperation implements Runnable{
     }
 
     public boolean sendMsg() throws IOException {
-        Socket socket = new Socket("192.168.31.171", 2333);
+        Socket socket = new Socket(ip, 2333);
         BufferedWriter bfw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         BufferedReader bfr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         bfw.write(inputJson.toString() + "\n");
@@ -101,7 +103,7 @@ public class SocketOperation implements Runnable{
 
     //从服务器获取消息
     public JSONObject getMsg() throws IOException, JSONException {
-        Socket socket = new Socket("192.168.31.171", 2333);
+        Socket socket = new Socket(ip, 2333);
 //        String ipAddress = socket.getInetAddress().toString();
         BufferedWriter bfw = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         BufferedReader bfr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -114,7 +116,7 @@ public class SocketOperation implements Runnable{
     @Override
     public void run() {
         try {
-            boolean canConnect = InetAddress.getByName("192.168.31.171").isReachable(5000);
+            boolean canConnect = InetAddress.getByName(ip).isReachable(5000);
             if(canConnect) {
                 sendMsg();
             }

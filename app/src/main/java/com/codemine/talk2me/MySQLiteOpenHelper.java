@@ -6,18 +6,11 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class MySQLiteOpenHelper extends SQLiteOpenHelper {
 
-    public static final String CREATE_CONTRACTS = "create table CONTRACTS ("
-            + "id integer primary key autoincrement, "
-            + "name text, "
-            + "time text, "
-            + "msg text)";
-
-    public static final String CREATE_CHAT = "create table CHAT ("
-            + "id integer primary key autoincrement, "
-            + "from text, "
-            + "to text, "
-            + "msg text, "
-            + "time text)";
+    public static final String CREATE_CHAT = "create table CHAT_RECORD ("
+            + "fromAccount text, "
+            + "toAccount text, "
+            + "info text, "
+            + "date text)";
 
     public MySQLiteOpenHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
         super(context, name, factory, version);
@@ -25,7 +18,6 @@ public class MySQLiteOpenHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
-        sqLiteDatabase.execSQL(CREATE_CONTRACTS);
         sqLiteDatabase.execSQL(CREATE_CHAT);
     }
 
