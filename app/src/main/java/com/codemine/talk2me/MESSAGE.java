@@ -16,4 +16,5 @@ public class MESSAGE {
     final static int GET_FRIENDS_FROM_SERVER = 9;//从服务器获取好友
     final static int GET_NEW_MSG = 10;//从服务器获取新的消息
     final static int SHAKE_NEW_FRIEND = 11;//通过摇晃手机获得一个新的朋友
+    final static int UPDATE_CURRENT_MSG = 12;//更新当前聊天界面的消息
 }

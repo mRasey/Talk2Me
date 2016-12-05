@@ -57,23 +57,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             float yValue = Math.abs(event.values[1]);
             float zValue = Math.abs(event.values[2]);
             if (xValue > 15 || yValue > 15 || zValue > 15) { // 认为用户摇动了手机，触发摇一摇逻辑
-                //todo 摇晃事件
                 Toast.makeText(MainActivity.this, "摇一摇", Toast.LENGTH_SHORT).show();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("op", "shakeNewFriend");
-                            jsonObject.put("account", myAccount);
-                            callBackJson = new SocketOperation(jsonObject).getMsg();
-                            handler.sendMessage(MyMessage.createMessage(SHAKE_NEW_FRIEND));
-                        }
-                        catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }).start();
+                new Thread(new ShakeAFriend()).start();//建立新的线程从服务端获取一个新的好友
             }
         }
 
@@ -159,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         initContactsFromServer(); // 从服务器初始化联系人列表
         try {
-            Thread.sleep(1000);
+            Thread.sleep(2000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -181,26 +166,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Sensor sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL);
 
-
         //新建线程循环接收服务器的消息
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    while(true) {
-                        //向服务器取信息
-                        HashMap<String, String> pushIpMap = new HashMap<>();
-                        pushIpMap.put("op", "getNewMsg");//定义操作
-                        pushIpMap.put("account", myAccount);//指明账号
-                        callBackJson = new SocketOperation(new JSONObject(pushIpMap)).getMsg();//向服务器更新本机地址
-                        handler.sendMessage(MyMessage.createMessage(GET_NEW_MSG));
-                        Thread.sleep(1000);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
+        new Thread(new GetNewMsg()).start();
     }
 
 
@@ -210,32 +177,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      */
     public void initContactsFromServer() {
         contacts.clear();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-//                    while (true) {
-                        JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("op", "getFriends");
-                        jsonObject.put("account", myAccount);
-                        callBackJson = new SocketOperation(jsonObject).getMsg();
-                        handler.sendMessage(MyMessage.createMessage(GET_FRIENDS_FROM_SERVER));
-//                        Thread.sleep(1000);
-//                    }
-                }
-                catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
-    }
-
-    /**
-     * 获取当前时间
-     * @return
-     */
-    public static String getCurrentTime() {
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Calendar.getInstance().getTime());
+        new Thread(new GetFriendsFromServer()).start();
     }
 
     /**
@@ -264,5 +206,63 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+    /**
+     * 从服务器数据库读取联系人列表
+     */
+    private class GetFriendsFromServer implements Runnable {
+        @Override
+        public void run() {
+            try {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("op", "getFriends");
+                jsonObject.put("account", myAccount);
+                callBackJson = new SocketOperation(jsonObject).getMsg();
+                handler.sendMessage(MyMessage.createMessage(GET_FRIENDS_FROM_SERVER));
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+                new Thread(new GetFriendsFromServer()).start();
+            }
+        }
+    }
+
+    private class GetNewMsg implements Runnable {
+        @Override
+        public void run() {
+            try {
+                while(true) {
+                    //向服务器取信息
+                    HashMap<String, String> pushIpMap = new HashMap<>();
+                    pushIpMap.put("op", "getNewMsg");//定义操作
+                    pushIpMap.put("account", myAccount);//指明账号
+                    callBackJson = new SocketOperation(new JSONObject(pushIpMap)).getMsg();//向服务器更新本机地址
+                    handler.sendMessage(MyMessage.createMessage(GET_NEW_MSG));
+                    Thread.sleep(1000);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                new Thread(new GetNewMsg()).start();
+            }
+        }
+    }
+
+    private class ShakeAFriend implements Runnable {
+
+        @Override
+        public void run() {
+            try {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("op", "shakeNewFriend");
+                jsonObject.put("account", myAccount);
+                callBackJson = new SocketOperation(jsonObject).getMsg();
+                handler.sendMessage(MyMessage.createMessage(SHAKE_NEW_FRIEND));
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+                new Thread(new ShakeAFriend()).start();
+            }
+        }
     }
 }
