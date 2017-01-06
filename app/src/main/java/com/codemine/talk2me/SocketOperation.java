@@ -24,6 +24,8 @@ public class SocketOperation implements Runnable{
     private Handler handler;
 //    private String ip = "172.31.255.141";
     private String ip = "192.168.31.171";
+//    private String ip = "10.137.170.201";
+//    private String ip = "192.168.43.85";
 //    private Socket socket = new Socket("192.168.31.132", 2333);
     private Message message = new Message();
 //    private final int HIDE_PROGRESSBAR = 1;
@@ -117,6 +119,7 @@ public class SocketOperation implements Runnable{
     public void run() {
         try {
             boolean canConnect = InetAddress.getByName(ip).isReachable(5000);
+            System.out.println("fuck:" + canConnect);
             if(canConnect) {
                 sendMsg();
             }
